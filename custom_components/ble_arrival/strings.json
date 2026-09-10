@@ -1,0 +1,72 @@
+{
+  "title": "BLE Arrival",
+  "config": {
+    "step": {
+      "user": {
+        "title": "BLE Arrival",
+        "menu_options": {
+          "new": "Set up a new car",
+          "existing": "Add an already configured dongle"
+        }
+      },
+      "new": {
+        "title": "Add a car",
+        "description": "Create a separate credential for this car. After finishing, select Configure on its integration entry to copy the ESPHome configuration and flash the dongle. Setup is saved and can be resumed after restarting Home Assistant. No entities are created until Bluetooth authentication succeeds.",
+        "data": {
+          "name": "Car name",
+          "board": "Dongle model"
+        }
+      },
+      "existing": {
+        "title": "Add an existing dongle",
+        "description": "Power the dongle near a connection-capable Bluetooth proxy. Select it and enter the 64-character authentication key from its ESPHome secrets file. The key stays in Home Assistant and is never sent over Bluetooth.",
+        "data": {
+          "name": "Car name",
+          "address": "Dongle",
+          "key": "Authentication key"
+        }
+      }
+    },
+    "error": {
+      "invalid_input": "Enter a car name of 1 to 64 characters and a supported board.",
+      "invalid_key": "Enter exactly 64 hexadecimal characters.",
+      "invalid_auth": "The dongle did not authenticate with this key.",
+      "cannot_connect": "Could not connect. Check power, range, proxy active connections and free connection slots.",
+      "no_dongles": "No connectable BLE Arrival dongles found. Power one nearby, check your proxies, then reopen this step."
+    },
+    "abort": {
+      "already_configured": "This dongle already has an entry. Open Configure on that entry."
+    },
+    "create_entry": {
+      "default": "Car saved. Select Configure on its BLE Arrival integration entry to copy the YAML, flash your dongle and verify it. Existing verified dongles are ready for detection. No door automation is installed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage car",
+        "menu_options": {
+          "configuration": "Show ESPHome configuration",
+          "verify": "Verify dongle",
+          "revoke": "Revoke credential and prepare a new one"
+        }
+      },
+      "configuration": {
+        "title": "Copy configuration and flash",
+        "description": "These blocks contain a private credential. Do not share screenshots or commit your secrets file.\n\n**New ESPHome device**\n\nPaste this complete configuration into ESPHome Device Builder. It works over USB and Bluetooth without WiFi.\n\n```yaml\n{full_yaml}\n```\n\n**Existing ESPHome device**\n\nMerge this snippet into your configuration. Remove esp32_ble_beacon and any other BLE server configuration. Use ESPHome 2026.8.2 or newer with ESP-IDF. Keep your existing WiFi/API/OTA settings if desired, with both reboot timeouts set to 0s.\n\n```yaml\n{snippet}\n```\n\n**secrets.yaml**\n\nAdd this entry to ESPHome secrets.yaml:\n\n```yaml\n{secret}\n```\n\nFlash over USB yourself, then power the dongle near a proxy. Submit to verify, or close and resume later. The saved credential stays the same."
+      },
+      "verify": {
+        "title": "Verify dongle",
+        "description": "Power this car's flashed dongle near an active Bluetooth proxy. Submit to check its identity and perform a fresh authenticated exchange. Discovery by itself does not complete setup. If you have many dongles, temporarily power only the one being added. This step does not operate any door."
+      },
+      "revoke": {
+        "title": "Revoke this car's credential?",
+        "description": "Submitting immediately disables authentication for the old credential and generates a new one. Other cars are unaffected. Reopen Configure to copy the new configuration and reflash over USB. Closing this screen makes no change."
+      }
+    },
+    "error": {
+      "no_dongles": "No connectable BLE Arrival dongles found. Check dongle power, range and active proxy connections.",
+      "cannot_verify": "Could not authenticate this car. Check you flashed the displayed device ID and matching secrets entry, then retry. A different dongle or wrong key cannot complete setup."
+    }
+  }
+}
