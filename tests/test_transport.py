@@ -17,8 +17,11 @@ IDENTITY = b"\x01" + ID + b"\x00\x01\x00"
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("version", [1, 2])
 @pytest.mark.parametrize("failure", [None, "wrong_id", "bad_mac", "timeout"])
-async def test_exchange_disconnects_and_rejects(monkeypatch, failure):
+async def test_exchange_disconnects_and_rejects(monkeypatch, failure, version):
+    identity = bytes([version]) + IDENTITY[1:]
+    uptime = (301).to_bytes(8, "little") if version == 2 else b""
     client = AsyncMock()
     client._connected_scanner = SimpleNamespace(source="proxy-b", name="Garage proxy")
 
@@ -31,16 +34,19 @@ async def test_exchange_disconnects_and_rejects(monkeypatch, failure):
     async def write(uuid, value, response):
         nonlocal request
         assert response is True
+        assert value[0] == version
         request = value
 
     async def read(uuid):
         if uuid == IDENTITY_UUID:
-            return IDENTITY
+            return identity
         if failure == "timeout":
             raise TimeoutError
         if failure == "bad_mac":
             return bytes(32)
-        return hmac.digest(KEY, b"BLE-ARRIVAL-AUTH\0" + IDENTITY + request[1:], hashlib.sha256)
+        return uptime + hmac.digest(
+            KEY, b"BLE-ARRIVAL-AUTH\0" + identity + request[1:] + uptime, hashlib.sha256
+        )
 
     client.write_gatt_char.side_effect = write
     client.read_gatt_char.side_effect = read
@@ -60,7 +66,9 @@ async def test_exchange_disconnects_and_rejects(monkeypatch, failure):
     else:
         assert await transport.authenticate(
             None, "address", expected_id, KEY.hex()
-        ) == transport.AuthenticationResult(ID.hex(), "0.1.0", "proxy-b", "Garage proxy")
+        ) == transport.AuthenticationResult(
+            ID.hex(), "0.1.0", "proxy-b", "Garage proxy", 301 if version == 2 else None
+        )
     client.disconnect.assert_awaited_once()
     if failure == "wrong_id":
         client.write_gatt_char.assert_not_awaited()

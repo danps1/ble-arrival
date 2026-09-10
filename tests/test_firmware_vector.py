@@ -22,5 +22,5 @@ def test_cpp_and_python_build_identical_signed_message(tmp_path):
         check=True,
     )
     result = subprocess.check_output([str(executable)], text=True).strip()
-    vector = json.loads((ROOT / "tests/vectors/auth_v1.json").read_text())
+    vector = json.loads((ROOT / "tests/vectors/auth_v2.json").read_text())
     assert result == vector["message"]

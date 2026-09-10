@@ -18,7 +18,7 @@ VECTOR = json.loads((Path(__file__).parent / "vectors/auth_v1.json").read_text()
 
 
 def attempt():
-    return Challenge(bytes.fromhex(VECTOR["nonce"]), time.monotonic() + 5)
+    return Challenge(bytes.fromhex(VECTOR["nonce"]), time.monotonic() + 5, version=1)
 
 
 def verify(c, **changes):
@@ -73,7 +73,7 @@ def test_response_length(size):
         verify(attempt(), response=b"a" * size)
 
 
-@pytest.mark.parametrize("value", [b"", b"a" * 19, b"a" * 21, bytes([2]) + b"a" * 19])
+@pytest.mark.parametrize("value", [b"", b"a" * 19, b"a" * 21, bytes([3]) + b"a" * 19])
 def test_identity_validation(value):
     with pytest.raises(AuthenticationError):
         parse_identity(value)
