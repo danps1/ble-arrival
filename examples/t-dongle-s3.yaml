@@ -1,0 +1,20 @@
+# For first installation use the personalised blocks from Home Assistant.
+# This public example uses a deliberately public test credential. Never deploy it.
+esphome:
+  name: ble-arrival-example
+  min_version: 2026.8.2
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_mode: dio
+  framework:
+    type: esp-idf
+logger:
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [ble_arrival]
+ble_arrival:
+  device_id: "000102030405060708090a0b0c0d0e0f"
+  secret_key: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
