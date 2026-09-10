@@ -1,7 +1,6 @@
 {
   "domain": "ble_arrival",
   "name": "BLE Arrival",
-  "version": "0.1.0",
   "codeowners": [
     "@danps1"
   ],
@@ -10,10 +9,11 @@
     "bluetooth"
   ],
   "documentation": "https://github.com/danps1/ble-arrival",
-  "issue_tracker": "https://github.com/danps1/ble-arrival/issues",
   "integration_type": "device",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/danps1/ble-arrival/issues",
   "requirements": [
     "bleak-retry-connector==4.7.0"
-  ]
+  ],
+  "version": "0.1.0"
 }
