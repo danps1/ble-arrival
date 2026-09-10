@@ -64,3 +64,37 @@ async def test_copy_configuration_is_resumable():
     second = await flow.async_step_configuration()
     assert first["description_placeholders"] == second["description_placeholders"]
     assert entry.data["key"] in first["description_placeholders"]["secret"]
+
+
+@pytest.mark.asyncio
+async def test_verification_keeps_identity_and_credential(monkeypatch):
+    from custom_components.ble_arrival import config_flow
+    from custom_components.ble_arrival.transport import AuthenticationResult
+
+    data = new_car("Test car", "t_dongle_s3")
+    entry = SimpleNamespace(data=data)
+    updates = Mock()
+    flow = BLEArrivalOptionsFlow()
+    flow.handler = "entry"
+    flow.hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_get_known_entry=lambda _: entry, async_update_entry=updates
+        )
+    )
+    monkeypatch.setattr(
+        config_flow, "candidates", lambda *a: [SimpleNamespace(address="dongle", name="Test")]
+    )
+    monkeypatch.setattr(
+        config_flow,
+        "authenticate",
+        AsyncMock(
+            return_value=AuthenticationResult(data["device_id"], "0.1.0", "proxy-b", "Garage")
+        ),
+    )
+    result = await flow.async_step_verify({})
+    assert result["type"] == "create_entry"
+    saved = updates.call_args.kwargs["data"]
+    assert saved["verified"] is True
+    assert saved["key"] == data["key"]
+    assert saved["device_id"] == data["device_id"]
+    assert saved["firmware"] == "0.1.0"
