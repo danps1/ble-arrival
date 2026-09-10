@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+.esphome/
+.pio/
+secrets.yaml
+*.bin
+*.elf
+.DS_Store
+build/
