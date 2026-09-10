@@ -3,6 +3,7 @@
 #include "esphome/core/hal.h"
 #include <mbedtls/md.h>
 #include <esp_gatts_api.h>
+#include <esp_timer.h>
 
 namespace esphome::ble_arrival {
 static const char *const TAG = "ble_arrival";
@@ -13,7 +14,7 @@ void BLEArrival::set_device_id(const std::vector<uint8_t> &value) {
   if (value.size() != 16) return;
   identity_[0] = PROTOCOL_VERSION;
   std::copy(value.begin(), value.end(), identity_.begin() + 1);
-  identity_[17] = 0; identity_[18] = 1; identity_[19] = 0;
+  identity_[17] = 0; identity_[18] = 2; identity_[19] = 0;
   identity_valid_ = true;
 }
 void BLEArrival::set_secret_key(const std::vector<uint8_t> &value) {
@@ -54,12 +55,14 @@ void BLEArrival::on_challenge_(std::span<const uint8_t> request, uint16_t conn) 
   clear_response_();
   if (!connected_ || conn != connection_id_ || millis() - last_request_ < 200) return;
   std::array<uint8_t, MESSAGE_SIZE> message{};
-  if (!build_message(request.data(), request.size(), identity_, message)) return;
+  const uint64_t uptime_seconds = static_cast<uint64_t>(esp_timer_get_time()) / 1000000ULL;
+  if (!build_message(request.data(), request.size(), identity_, uptime_seconds, message)) return;
   last_request_ = millis();
-  std::vector<uint8_t> response(32);
+  std::vector<uint8_t> response(40);
+  std::copy(message.end() - 8, message.end(), response.begin());
   const auto *md = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
   if (md == nullptr || mbedtls_md_hmac(md, key_.data(), key_.size(),
-                                      message.data(), message.size(), response.data()) != 0) return;
+                                      message.data(), message.size(), response.data() + 8) != 0) return;
   response_->set_value(std::move(response));
   response_at_ = millis();
   response_valid_ = true;
@@ -72,7 +75,7 @@ void BLEArrival::loop() {
   }
 }
 void BLEArrival::dump_config() {
-  ESP_LOGCONFIG(TAG, "BLE Arrival protocol 1; firmware 0.1.0; credential configured: %s",
+  ESP_LOGCONFIG(TAG, "BLE Arrival protocol 2; firmware 0.2.0; credential configured: %s",
                 key_valid_ ? "yes" : "no");
 }
 }  // namespace esphome::ble_arrival
