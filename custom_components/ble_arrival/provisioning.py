@@ -50,4 +50,12 @@ esp32:
 logger:
 
 {snippet}"""
+    if data.get("board") == "t_dongle_s3":
+        full += f"""
+# Optional button-activated display (20 seconds):
+# packages:
+#   dongle_display: github://{REPOSITORY}/packages/t-dongle-s3-display.yaml@{FIRMWARE_REF}
+# substitutions:
+#   ble_arrival_display_name: "MY CAR"
+"""
     return full, snippet, f'{secret_name}: "{data["key"]}"'

@@ -19,6 +19,7 @@ class AuthenticationResult:
     firmware: str
     source: str | None = None
     source_name: str | None = None
+    uptime_seconds: int | None = None
 
 
 def _connection_route(client) -> tuple[str | None, str | None]:
@@ -71,13 +72,15 @@ async def authenticate(hass, address: str, device_id: str | None, key: str) -> A
             actual_id, firmware = parse_identity(identity)
             if device_id is not None and actual_id != device_id:
                 raise AuthenticationError("Different dongle")
-            challenge = Challenge.create()
+            challenge = Challenge.create(version=identity[0])
             async with asyncio.timeout(5):
                 await client.write_gatt_char(CHALLENGE_UUID, challenge.request(), response=True)
                 response = bytes(await client.read_gatt_char(RESPONSE_UUID))
-                challenge.verify(key_bytes, device_id or actual_id, identity, response)
+                uptime_seconds = challenge.verify(
+                    key_bytes, device_id or actual_id, identity, response
+                )
             source, source_name = _connection_route(client)
-            return AuthenticationResult(actual_id, firmware, source, source_name)
+            return AuthenticationResult(actual_id, firmware, source, source_name, uptime_seconds)
     except (TimeoutError, BleakError) as err:
         raise DeviceUnavailable("Bluetooth connection failed or timed out") from err
     finally:

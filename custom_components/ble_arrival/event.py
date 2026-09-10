@@ -22,5 +22,8 @@ class AuthenticationEvent(ArrivalEntity, EventEntity):
     def _handle_coordinator_update(self):
         if self.coordinator.sequence > self._sequence:
             self._sequence = self.coordinator.sequence
-            self._trigger_event("authenticated")
+            self._trigger_event(
+                "authenticated",
+                {"uptime_seconds": self.coordinator.uptime_seconds},
+            )
         self.async_write_ha_state()

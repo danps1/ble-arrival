@@ -6,7 +6,7 @@ import secrets
 import time
 from dataclasses import dataclass
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 CONTEXT = b"BLE-ARRIVAL-AUTH\x00"
 
 
@@ -22,7 +22,7 @@ def decode_hex(value: str, length: int) -> bytes:
 
 
 def parse_identity(value: bytes) -> tuple[str, str]:
-    if len(value) != 20 or value[0] != PROTOCOL_VERSION:
+    if len(value) != 20 or value[0] not in (1, PROTOCOL_VERSION):
         raise AuthenticationError("Unsupported identity or protocol")
     return value[1:17].hex(), ".".join(str(x) for x in value[17:20])
 
@@ -34,23 +34,34 @@ class Challenge:
     nonce: bytes
     deadline: float
     consumed: bool = False
+    version: int = PROTOCOL_VERSION
 
     @classmethod
-    def create(cls, timeout: float = 5.0):
-        return cls(secrets.token_bytes(16), time.monotonic() + timeout)
+    def create(cls, timeout: float = 5.0, *, version: int = PROTOCOL_VERSION):
+        if version not in (1, PROTOCOL_VERSION):
+            raise AuthenticationError("Unsupported challenge protocol")
+        return cls(secrets.token_bytes(16), time.monotonic() + timeout, version=version)
 
     def request(self) -> bytes:
-        return bytes([PROTOCOL_VERSION]) + self.nonce
+        return bytes([self.version]) + self.nonce
 
-    def verify(self, key: bytes, expected_id: str, identity: bytes, response: bytes) -> None:
+    def verify(self, key: bytes, expected_id: str, identity: bytes, response: bytes) -> int | None:
         if self.consumed:
             raise AuthenticationError("Challenge already consumed")
         self.consumed = True
         if time.monotonic() >= self.deadline:
             raise AuthenticationError("Challenge expired")
         device_id, _ = parse_identity(identity)
-        if device_id != expected_id or len(key) != 32 or len(response) != 32:
+        if (
+            identity[0] != self.version
+            or device_id != expected_id
+            or len(key) != 32
+            or len(response) != (40 if self.version == 2 else 32)
+        ):
             raise AuthenticationError("Identity or response mismatch")
-        expected = hmac.new(key, CONTEXT + identity + self.nonce, hashlib.sha256).digest()
-        if not hmac.compare_digest(expected, response):
+        uptime = response[:8] if self.version == 2 else b""
+        mac = response[8:] if self.version == 2 else response
+        expected = hmac.new(key, CONTEXT + identity + self.nonce + uptime, hashlib.sha256).digest()
+        if not hmac.compare_digest(expected, mac):
             raise AuthenticationError("Authentication failed")
+        return int.from_bytes(uptime, "little") if uptime else None

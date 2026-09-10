@@ -24,6 +24,7 @@ class ArrivalCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.semaphore = semaphore
         self.last_success = None
+        self.uptime_seconds = None
         self.last_source = None
         self.last_source_name = None
         self._expiry_notified = True
@@ -108,6 +109,7 @@ class ArrivalCoordinator(DataUpdateCoordinator):
                     continue
                 self.address = info.address
                 self.firmware = result.firmware
+                self.uptime_seconds = result.uptime_seconds
                 self.last_source = result.source
                 self.last_source_name = result.source_name
                 self._expiry_notified = False
