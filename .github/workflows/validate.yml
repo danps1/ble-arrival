@@ -22,6 +22,7 @@ jobs:
           python-version: '3.14'
       - run: pip install -r requirements-firmware.txt
       - run: esphome compile examples/t-dongle-s3.yaml
+      - run: esphome compile examples/t-dongle-s3-display.yaml
   hacs:
     runs-on: ubuntu-latest
     steps:
