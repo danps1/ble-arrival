@@ -1,0 +1,5 @@
+# Compilation example only: the base uses a PUBLIC TEST credential.
+# Never flash this example. Use your own HA-generated configuration.
+packages:
+  beacon: !include t-dongle-s3.yaml
+  display: !include ../packages/t-dongle-s3-display.yaml
