@@ -24,6 +24,9 @@ class ArrivalCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.semaphore = semaphore
         self.last_success = None
+        self.last_source = None
+        self.last_source_name = None
+        self._expiry_notified = True
         self.last_success_monotonic = None
         self.address = entry.data.get("address")
         self.firmware = entry.data.get("firmware")
@@ -61,8 +64,12 @@ class ArrivalCoordinator(DataUpdateCoordinator):
 
     @callback
     def _tick(self, now):
-        if self.status == "authenticated" and not self.fresh:
-            self.status = "not_recently_authenticated"
+        # A failed attempt may change status before freshness expires. Expiry
+        # must still publish while a retry is in flight, independently of status.
+        if not self._expiry_notified and not self.fresh:
+            self._expiry_notified = True
+            if self.status == "authenticated":
+                self.status = "not_recently_authenticated"
             self.async_set_updated_data(self.sequence)
         self.request_attempt()
 
@@ -87,7 +94,7 @@ class ArrivalCoordinator(DataUpdateCoordinator):
             infos.sort(key=lambda i: (i.address != self.address, i.name != preferred_name))
             for info in infos[:4]:
                 try:
-                    _, firmware = await authenticate(
+                    result = await authenticate(
                         self.hass,
                         info.address,
                         self.entry.data["device_id"],
@@ -100,7 +107,10 @@ class ArrivalCoordinator(DataUpdateCoordinator):
                     self.status = "connection_failed"
                     continue
                 self.address = info.address
-                self.firmware = firmware
+                self.firmware = result.firmware
+                self.last_source = result.source
+                self.last_source_name = result.source_name
+                self._expiry_notified = False
                 self.last_success = dt_util.utcnow()
                 self.last_success_monotonic = time.monotonic()
                 self.sequence += 1

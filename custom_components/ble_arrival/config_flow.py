@@ -64,7 +64,7 @@ class BLEArrivalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_key"
             else:
                 try:
-                    device_id, firmware = await authenticate(
+                    result = await authenticate(
                         self.hass, user_input["address"], None, user_input["key"]
                     )
                 except AuthenticationError:
@@ -72,18 +72,18 @@ class BLEArrivalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 except DeviceUnavailable:
                     errors["base"] = "cannot_connect"
                 else:
-                    await self.async_set_unique_id(device_id)
+                    await self.async_set_unique_id(result.device_id)
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(
                         title=user_input["name"].strip(),
                         data={
                             "name": user_input["name"].strip(),
                             "board": "esp32_s3",
-                            "device_id": device_id,
+                            "device_id": result.device_id,
                             "key": user_input["key"].lower(),
                             "verified": True,
                             "address": user_input["address"],
-                            "firmware": firmware,
+                            "firmware": result.firmware,
                         },
                     )
         if not infos:
@@ -146,12 +146,12 @@ class BLEArrivalOptionsFlow(config_entries.OptionsFlow):
             errors["base"] = "no_dongles" if not infos else "cannot_verify"
             for info in infos[:8]:
                 try:
-                    _, firmware = await authenticate(
+                    result = await authenticate(
                         self.hass, info.address, data["device_id"], data["key"]
                     )
                 except AuthenticationError, DeviceUnavailable:
                     continue
-                data.update(verified=True, address=info.address, firmware=firmware)
+                data.update(verified=True, address=info.address, firmware=result.firmware)
                 self.hass.config_entries.async_update_entry(self.config_entry, data=data)
                 return self.async_create_entry(title="", data={})
         return self.async_show_form(step_id="verify", data_schema=vol.Schema({}), errors=errors)
