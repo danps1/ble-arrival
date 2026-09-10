@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 (pre-release)
+
+- Adds cryptographically authenticated boot uptime in whole seconds to protocol 2, without an extra GATT exchange.
+- Adds an uptime diagnostic sensor and matching `uptime_seconds` authentication-event attribute. Legacy firmware authenticates with unknown uptime.
+- Uses a 64-bit firmware timer; reboots reset uptime without persistent counters or flash writes.
+- Adds the optional, button-activated LilyGO T-Dongle-S3 display package, with 20-second backlight timeout and commented installation lines in generated LilyGO YAML.
+- Adds protocol tampering, replay, framing, boundary, backwards-compatibility, event and sensor tests.
+- Update HA first; reflash dongles with the same credentials for uptime. Existing display snippets remain usable. No proxy changes or garage automation.
+
+
 ## 0.1.1
 
 - Add a diagnostic **Last authenticated via** sensor with the connected proxy/adapter name, source identifier and authentication timestamp. It updates only after a successful exchange; unavailable route metadata is reported as unknown.
