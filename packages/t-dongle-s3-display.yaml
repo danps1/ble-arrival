@@ -1,0 +1,118 @@
+# Optional LILYGO T-Dongle-S3 screen. No WiFi or HA connection required.
+# BLE connection activity is not proof that HA accepted authentication.
+substitutions:
+  ble_arrival_display_name: "MY CAR"
+
+globals:
+  - id: screen_ble_connected
+    type: bool
+    initial_value: "false"
+  - id: screen_seen_connection
+    type: bool
+    initial_value: "false"
+  - id: screen_last_connection
+    type: uint32_t
+    initial_value: "0"
+
+esp32_ble_server:
+  on_connect:
+    - lambda: |-
+        id(screen_ble_connected) = true;
+        id(screen_seen_connection) = true;
+        id(screen_last_connection) = millis();
+  on_disconnect:
+    - lambda: |-
+        id(screen_ble_connected) = false;
+
+spi:
+  - id: screen_spi
+    clk_pin: GPIO5
+    mosi_pin: GPIO3
+
+output:
+  - platform: ledc
+    id: screen_backlight_output
+    pin: GPIO38
+    inverted: true
+    frequency: 2000Hz
+
+light:
+  - platform: monochromatic
+    id: screen_backlight
+    output: screen_backlight_output
+    internal: true
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
+
+font:
+  - file: "gfonts://Roboto"
+    id: screen_font
+    size: 14
+
+binary_sensor:
+  - platform: gpio
+    id: screen_button
+    internal: true
+    pin:
+      number: GPIO0
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+    on_press:
+      - script.execute: show_screen
+
+script:
+  - id: show_screen
+    mode: restart
+    then:
+      - component.update: dongle_screen
+      - light.turn_on:
+          id: screen_backlight
+          brightness: 60%
+      - delay: 20s
+      - light.turn_off: screen_backlight
+
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            light.is_on: screen_backlight
+          then:
+            - component.update: dongle_screen
+
+display:
+  - platform: st7735
+    id: dongle_screen
+    spi_id: screen_spi
+    model: INITR_MINI160X80
+    reset_pin: GPIO1
+    cs_pin: GPIO4
+    dc_pin: GPIO2
+    rotation: 270
+    device_width: 82
+    device_height: 161
+    col_start: 0
+    row_start: 0
+    eight_bit_color: true
+    invert_colors: true
+    use_bgr: true
+    update_interval: never
+    lambda: |-
+      it.fill(Color::BLACK);
+      it.print(4, 2, id(screen_font), Color(0, 220, 180), "${ble_arrival_display_name}");
+      it.printf(4, 21, id(screen_font), "BLE: %s",
+                id(screen_ble_connected) ? "Connected" : "Waiting");
+      if (id(screen_seen_connection)) {
+        const uint32_t age = (millis() - id(screen_last_connection)) / 1000;
+        it.printf(4, 40, id(screen_font), "Last link: %lus", (unsigned long) age);
+      } else {
+        it.print(4, 40, id(screen_font), "Last link: none");
+      }
+      const uint32_t up = millis() / 1000;
+      it.printf(4, 59, id(screen_font), "Up: %luh %02lum",
+                (unsigned long) (up / 3600), (unsigned long) ((up / 60) % 60));
